@@ -75,9 +75,9 @@ def get_scraped_pages_by_user_id(
         return Paginator([], items_per_page).get_page(page_number)
     
 
-def get_scraped_page_by_url(url: str):
+def get_scraped_page_by_url_and_user_id(url: str, user_id: int):
     try:
-        return ScrapedPage.objects.get(url=url)
+        return ScrapedPage.objects.get(url=url, user_id=user_id)
     except ScrapedPage.DoesNotExist:
         return None
     

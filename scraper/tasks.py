@@ -16,7 +16,7 @@ def create_scraped_page_task(url: str, user_id: int):
         if not user:
             raise ValidationError("Invalid user ID")
 
-        page = scraper_services.get_scraped_page_by_url(url)
+        page = scraper_services.get_scraped_page_by_url_and_user_id(url, user_id)
         for link_url, link_name in links:
             ScrapedLink.objects.create(page=page, url=link_url, name=link_name)
     except Exception as e:
