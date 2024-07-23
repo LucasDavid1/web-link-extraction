@@ -7,7 +7,8 @@ from users.models import User
 from scraper.models import ScrapedPage, ScrapedLink
 from scraper.services import (
     get_scraped_pages_by_user_id,
-    create_scraped_page
+    create_scraped_page,
+    get_scraped_links_and_page_by_page_id
 )
 
 
@@ -122,3 +123,70 @@ class TestCreateScrapedPage:
 
         assert ScrapedPage.objects.count() == 1
         assert ScrapedLink.objects.count() == 1
+
+
+@pytest.mark.django_db
+class TestGetScrapedLinksAndPageByPageId:
+
+    @pytest.fixture
+    def user(self):
+        return User.objects.create_user(username='testuser', password='12345')
+
+    @pytest.fixture
+    def scraped_page(self, user):
+        return ScrapedPage.objects.create(user=user, url='https://testpage.com', title='Test Page')
+
+    @pytest.fixture
+    def scraped_links(self, scraped_page):
+        links = [
+            ScrapedLink.objects.create(page=scraped_page, url=f'https://link{i}.com', name=f'Link {i}')
+            for i in range(10)
+        ]
+        return links
+
+    def test_get_scraped_links_and_page_by_page_id_success(self, scraped_page, scraped_links):
+        page_id = scraped_page.id
+        page_number = 1
+        items_per_page = 5
+        paginated_links, page = get_scraped_links_and_page_by_page_id(page_id, page_number, items_per_page)
+
+        assert page == scraped_page
+        assert paginated_links.paginator.count == 10
+        assert len(paginated_links) == items_per_page
+
+    def test_get_scraped_links_and_page_by_page_id_no_page(self):
+        non_existent_page_id = 9999
+        page_number = 1
+        items_per_page = 5
+        paginated_links, page = get_scraped_links_and_page_by_page_id(non_existent_page_id, page_number, items_per_page)
+
+        assert page is None
+        assert paginated_links.paginator.count == 0
+
+    def test_get_scraped_links_and_page_by_page_id_pagination(self, scraped_page, scraped_links):
+        page_id = scraped_page.id
+        items_per_page = 3
+
+        # Test first page
+        page_number = 1
+        paginated_links, page = get_scraped_links_and_page_by_page_id(page_id, page_number, items_per_page)
+        assert len(paginated_links) == items_per_page
+        assert paginated_links.number == 1
+        assert paginated_links.has_next()
+        assert not paginated_links.has_previous()
+
+        # Test second page
+        page_number = 2
+        paginated_links, page = get_scraped_links_and_page_by_page_id(page_id, page_number, items_per_page)
+        assert len(paginated_links) == items_per_page
+        assert paginated_links.number == 2
+        assert paginated_links.has_next()
+        assert paginated_links.has_previous()
+
+        # Test last page
+        page_number = 4
+        paginated_links, page = get_scraped_links_and_page_by_page_id(page_id, page_number, items_per_page)
+        assert len(paginated_links) == 1
+        assert paginated_links.number == 4
+        assert not paginated_links.has_next()
+        assert paginated_links.has_previous()

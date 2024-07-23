@@ -1,10 +1,8 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
 
-from .models import ScrapedPage
 from scraper import services as scraper_services
-from .forms import URLForm
+from scraper.forms import URLForm
 
 
 @login_required
@@ -20,8 +18,17 @@ def page_list(request):
 
 @login_required
 def page_detail(request, page_id):
-    page = get_object_or_404(ScrapedPage, id=page_id, user=request.user)
-    return render(request, 'scraper/page_detail.html', {'page': page})
+    page_number = request.GET.get('page', 1)
+    items_per_page = 5
+    links, page = scraper_services.get_scraped_links_and_page_by_page_id(page_id, page_number, items_per_page)
+    if not page:
+        return redirect('page_list')
+    return render(request, 'scraper/page_detail.html', {
+        'page': page,
+        'links': links,
+        'paginator': links.paginator,
+        'page_obj': links,
+    })
 
 
 @login_required

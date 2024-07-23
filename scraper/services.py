@@ -35,16 +35,6 @@ def scrape_page(url):
     return title, links
 
 
-def get_scraped_pages_by_user_id_LEGACY(user_id: int):
-    try:
-        scraped_pages = ScrapedPage.objects.filter(user_id=user_id).annotate(
-            total_links=Count('links')
-        ).order_by('-created_at')
-        return scraped_pages
-    except ScrapedPage.DoesNotExist:
-        return []
-
-
 def get_scraped_pages_by_user_id(
         user_id: int,
         page_number: int,
@@ -58,6 +48,17 @@ def get_scraped_pages_by_user_id(
         return paginator.get_page(page_number)
     except ScrapedPage.DoesNotExist:
         return Paginator([], items_per_page).get_page(page_number)
+    
+
+def get_scraped_links_and_page_by_page_id(page_id: int, page_number: int, items_per_page: int = 5):
+    try:
+        page = ScrapedPage.objects.get(id=page_id)
+        links = page.links.all()
+        paginator = Paginator(links, items_per_page)
+        paginated_links = paginator.get_page(page_number)
+        return paginated_links, page
+    except ScrapedPage.DoesNotExist:
+        return Paginator([], items_per_page).get_page(page_number), None
 
 
 @transaction.atomic
