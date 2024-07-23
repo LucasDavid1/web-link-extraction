@@ -25,8 +25,8 @@ https://github.com/user-attachments/assets/eb37eccc-f76e-47ce-bf03-bfed833f404d
 ```shell
 git clone https://github.com/LucasDavid1/web-link-extraction.git
 ```
-2. Create a `.env` file in the project root with the following content:
-```json
+2. Create a `.env` file in the project root (same as this README) with the following content:
+```env
 DEBUG=True
 POSTGRES_DB=postgres
 POSTGRES_USER=postgres
