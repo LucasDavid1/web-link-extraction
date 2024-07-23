@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Link Extraction</title>
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        .table {
+            border: 1px solid #dee2e6;
+        }
+        .table th, .table td {
+            border: 1px solid #dee2e6;
+        }
+        .form-control, .btn {
+            border-radius: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <form method="post" action="{% url 'logout' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-link nav-link">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </button>
+        </form>
+        <div class="row mb-3">
+            <div class="col">
+                <input type="text" id="pageUrl" class="form-control" placeholder="Add new page">
+            </div>
+            <div class="col-auto">
+                <button id="scrapeButton" class="btn btn-outline-dark">
+                    <i class="bi bi-search"></i> Scrape
+                </button>
+            </div>
+        </div>
+        <div id="messageContainer" class="mt-2"></div>
+
+        <table class="table table-bordered">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Name</th>
+                    <th>Total links</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for page in pages %}
+                <tr>
+                    <td>{{ page.title }}</td>
+                    <td>
+                        {% if page.total_links > 0 %}
+                            {{ page.total_links }}
+                        {% else %}
+                            in progress
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if pages.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pages.previous_page_number }}">&laquo; Previous</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo; Previous</span>
+                    </li>
+                {% endif %}
+
+                {% for i in pages.paginator.page_range %}
+                    {% if pages.number == i %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ i }} <span class="sr-only">(current)</span></span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pages.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pages.next_page_number }}">Next &raquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next &raquo;</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</body>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#scrapeButton').click(function() {
+        var url = $('#pageUrl').val().trim();
+        if (url) {
+            $('#scrapeButton').prop('disabled', true).text('Scraping...');
+            $('#messageContainer').html('<div class="alert alert-info">Scraping in progress...</div>');
+            
+            $.ajax({
+                url: '/add/',
+                method: 'POST',
+                data: {
+                    url: url,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    $('#messageContainer').html('<div class="alert alert-success">Page scraped successfully!</div>');
+                    location.reload();
+                },
+                error: function(xhr, status, error) {
+                    $('#messageContainer').html('<div class="alert alert-danger">Error: ' + error + '</div>');
+                },
+                complete: function() {
+                    $('#scrapeButton').prop('disabled', false).text('Scrape');
+                }
+            });
+        } else {
+            $('#messageContainer').html('<div class="alert alert-warning">Please enter a URL</div>');
+        }
+    });
+});
+</script>
+</html>
