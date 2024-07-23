@@ -1,7 +1,7 @@
 from urllib.parse import urljoin, urlparse
 from django.db.models import Count
 from django.db import transaction
-from django.core.paginator import Paginator
+from django.core.paginator import Paginator, EmptyPage
 from django.core.exceptions import ValidationError
 
 import requests
@@ -90,14 +90,19 @@ def get_scraped_page_by_id(page_id: int):
 
 
 def get_scraped_links_and_page_by_page_id(page_id: int, page_number: int, items_per_page: int = 5):
+    page = get_scraped_page_by_id(page_id)
+    if page is None:
+        return Paginator([], items_per_page).page(1), None
+    
+    links = page.links.all()
+    paginator = Paginator(links, items_per_page)
+    
     try:
-        page = get_scraped_page_by_id(page_id)
-        links = page.links.all()
-        paginator = Paginator(links, items_per_page)
-        paginated_links = paginator.get_page(page_number)
-        return paginated_links, page
-    except ScrapedPage.DoesNotExist:
-        return Paginator([], items_per_page).get_page(page_number), None
+        paginated_links = paginator.page(page_number)
+    except EmptyPage:
+        paginated_links = paginator.page(paginator.num_pages)
+    
+    return paginated_links, page
 
 
 @transaction.atomic
