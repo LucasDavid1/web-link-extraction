@@ -55,6 +55,12 @@ make test
 ```
 
 
+## Stop containers
+```shell
+make down
+```
+
+
 ## Project Structure
 
 - `users`: Django app for user management
