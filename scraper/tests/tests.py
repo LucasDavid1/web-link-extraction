@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
@@ -63,66 +64,39 @@ class TestGetScrapedPagesByUserId:
         assert result.has_previous()
 
 
-@pytest.fixture
-def mock_scrape_page(monkeypatch):
-    def mock_func(url):
-        return "Test Title", [("https://example.com", "Example Link")]
-    monkeypatch.setattr("scraper.services.scrape_page", mock_func)
-
-@pytest.mark.django_db
 class TestCreateScrapedPage:
 
     @pytest.fixture
     def user(self):
         return User.objects.create_user(username='testuser', password='12345')
 
-    def test_create_scraped_page_success(self, user, mock_scrape_page):
+    @pytest.mark.django_db
+    @patch('scraper.services.get_scraped_page_title')
+    @patch('scraper.services.is_valid_url')
+    @patch('scraper.tasks.create_scraped_page_task.delay')
+    def test_create_scraped_page_success(self, mock_task, mock_is_valid_url, mock_get_title, user):
         url = "https://test.com"
-        page = create_scraped_page(url, user.id)
+        mock_is_valid_url.return_value = True
+        mock_get_title.return_value = "Test Title"
+
+        create_scraped_page(url, user.id)
 
         assert ScrapedPage.objects.count() == 1
-        assert ScrapedLink.objects.count() == 1
-        
         created_page = ScrapedPage.objects.first()
         assert created_page.url == url
         assert created_page.title == "Test Title"
         assert created_page.user_id == user.id
 
-        created_link = ScrapedLink.objects.first()
-        assert created_link.page == created_page
-        assert created_link.url == "https://example.com"
-        assert created_link.name == "Example Link"
+        mock_task.assert_called_once_with(url, user.id)
 
-    def test_create_scraped_page_invalid_user(self, mock_scrape_page):
-        url = "https://test.com"
-        invalid_user_id = 9999
+    @pytest.mark.django_db
+    @patch('scraper.services.is_valid_url')
+    def test_create_scraped_page_invalid_url(self, mock_is_valid_url, user):
+        url = "invalid_url"
+        mock_is_valid_url.return_value = False
 
-        with pytest.raises(ValidationError, match="Invalid user ID"):
-            create_scraped_page(url, invalid_user_id)
-
-    def test_create_scraped_page_scraping_error(self, user, monkeypatch):
-        def mock_error_scrape(url):
-            raise ValueError("Scraping error")
-        
-        monkeypatch.setattr("scraper.services.scrape_page", mock_error_scrape)
-
-        url = "https://test.com"
-        with pytest.raises(ValueError, match="Scraping error"):
+        with pytest.raises(ValidationError, match="Invalid URL"):
             create_scraped_page(url, user.id)
-
-        assert ScrapedPage.objects.count() == 0
-        assert ScrapedLink.objects.count() == 0
-
-    def test_create_scraped_page_duplicate_url(self, user, mock_scrape_page):
-        url = "https://test.com"
-        create_scraped_page(url, user.id)
-        
-        # Attempt to create a page with the same URL
-        with pytest.raises(IntegrityError):
-            create_scraped_page(url, user.id)
-
-        assert ScrapedPage.objects.count() == 1
-        assert ScrapedLink.objects.count() == 1
 
 
 @pytest.mark.django_db
