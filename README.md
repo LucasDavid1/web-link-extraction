@@ -2,6 +2,8 @@
 
 Link Scraper is a Django-based web application that allows users to scrape and store links from web pages. It uses Celery for asynchronous task processing and Docker for containerization.
 
+https://github.com/user-attachments/assets/eb37eccc-f76e-47ce-bf03-bfed833f404d
+
 ## Features
 
 - User registration and authentication
