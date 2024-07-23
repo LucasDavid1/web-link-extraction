@@ -60,6 +60,10 @@ make test
 make down
 ```
 
+## Restart containers
+```shell
+make restart
+```
 
 ## Project Structure
 
